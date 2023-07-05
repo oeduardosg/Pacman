@@ -167,7 +167,7 @@ void RealizaJogadas(tJogo jogo) {
     tCoordenada xyPacman;
     int xPacman, yPacman;
 
-    scanf("%*c");       //REVER ISSO E O SCANF DE BAIXO!
+    scanf("%*[^\n]\n");       //REVER ISSO E O SCANF DE BAIXO!
 
     while(comidas && jogadas < jogo.limiteDeJogadas) {
         scanf("%c\n", &jogada);
@@ -229,6 +229,7 @@ void RealizaJogadas(tJogo jogo) {
                     break;
                 }
         }
+        printf("%d %d\n", jogo.pacman.coordenada.x, jogo.pacman.coordenada.y);
         ImprimeJogo(jogo);
     }
 }
