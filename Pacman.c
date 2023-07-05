@@ -32,27 +32,58 @@ typedef struct {
     int linhas;
     int colunas;
     int limiteDeJogadas;
+    tPacman pacman;
     char mapa[MAPA_MAX_L][MAPA_MAX_C];
 } tJogo;
 
+tCoordenada GetXYPacman(tPacman pacman) {
+return pacman.coordenada;
+}
+
+int GetX(tCoordenada coordenada) {
+return coordenada.x;
+}
+
+int GetY(tCoordenada coordenada) {
+return coordenada.y;
+}
+
+//Essa função substitui no mapa a localização do Pacman e dos fantasmas;
+void PreencheMapa(int linha, int coluna, char mapaPreenchido[linha][coluna], tJogo jogo) {
+    int i, j, xPacman, yPacman;
+    tCoordenada xyPacman;
+    for(i = 0; i < linha; i++) {
+        for(j = 0; j < coluna; j++) {
+            mapaPreenchido[i][j] = jogo.mapa[i][j];
+        }
+    }
+    xyPacman = GetXYPacman(jogo.pacman);
+    xPacman = GetX(xyPacman);
+    yPacman = GetY(xyPacman);
+    if(xPacman != -1 && yPacman != -1) mapaPreenchido[xPacman][yPacman] = PACMAN;
+    //COLOCAR OS FANTASMAS
+}
+
 //Função para imprimir o mapa
-void ImprimeMapa(tJogo jogo) {
+void ImprimeJogo(tJogo jogo) {
     int i, j;
+    char mapaPreenchido[jogo.linhas][jogo.colunas];
+    PreencheMapa(jogo.linhas, jogo.colunas, mapaPreenchido, jogo);      //O mapa recebe aqui as coordenadas do Pacman e dos fantasmas;
     for(i = 0; i < jogo.linhas; i++) {
         for(j = 0; j < jogo.colunas; j++) {
-            printf("%c", jogo.mapa[i][j]);
+            printf("%c", mapaPreenchido[i][j]);
         }
         printf("\n");
     }
 }
 
 //Função para encontrar coordenadas de um caractere qualquer no mapa
-tCoordenada EncontraCoordenada(tJogo jogo, char procurado) {
+tCoordenada EncontraCoordenada(int linha, int coluna, char mapa[linha][coluna], char procurado) {
     tCoordenada coordenada;
     int i, j;
-    for(i = 0; i < jogo.linhas; i++) {
-        for(j = 0; j < jogo.linhas; j++) {
-            if(jogo.mapa[i][j] == procurado) {
+    for(i = 0; i < linha; i++) {
+        for(j = 0; j < coluna; j++) {
+            if(mapa[i][j] == procurado) {
                 coordenada.x = i;
                 coordenada.y = j;
                 return coordenada;
@@ -62,8 +93,27 @@ tCoordenada EncontraCoordenada(tJogo jogo, char procurado) {
 }
 
 //Função pra printar a posição inicial do Pacman
-void PrintaInicioPacman(tCoordenada coordenada) {
-    printf("Pac-Man comecara o jogo na linha %d e coluna %d\n", coordenada.x+1, coordenada.y+1);
+void PrintaInicioPacman(tPacman pacman) {
+    printf("Pac-Man comecara o jogo na linha %d e coluna %d\n", pacman.coordenada.x+1, pacman.coordenada.y+1);
+}
+
+tJogo LeJogoCompleto(int linha, int coluna, char mapaGeral[linha][coluna], tJogo jogo) {
+    int i, j;
+    tPacman pacman;
+    pacman.coordenada = EncontraCoordenada(linha, coluna, mapaGeral, PACMAN);
+    pacman.pontuacao = 0;
+    jogo.pacman = pacman;
+    for(i = 0; i < linha; i++) {
+        for(j = 0; j < coluna; j++) {
+            if(mapaGeral[i][j] != PAREDE && mapaGeral[i][j] != COMIDA) {
+                jogo.mapa[i][j] = VAZIO;
+            }
+            else {
+                jogo.mapa[i][j] = mapaGeral[i][j];
+            }
+        }
+    }
+    return jogo;
 }
 
 //Função que retorna o jogo lido, inicializa o mapa e gera o arquivo inicializacao.txt
@@ -84,35 +134,102 @@ tJogo InicializaJogo(char * diretorioGeral) {
     fscanf(arqJogo, "%d", &jogo.linhas);
     fscanf(arqJogo, "%d", &jogo.colunas);
     fscanf(arqJogo, "%d", &jogo.limiteDeJogadas);
+    char mapaGeral[jogo.linhas][jogo.colunas];
     for(i = 0; i < jogo.linhas; i++) {
         fscanf(arqJogo, "\n");
         for(j = 0; j < jogo.colunas; j++) {
-            fscanf(arqJogo, "%c", &jogo.mapa[i][j]);
+            fscanf(arqJogo, "%c", &mapaGeral[i][j]);
         }
     }
-    ImprimeMapa(jogo);
-    coordenadaPacman = EncontraCoordenada(jogo, PACMAN);
-    PrintaInicioPacman(coordenadaPacman);
+    jogo = LeJogoCompleto(jogo.linhas, jogo.colunas, mapaGeral, jogo);        //Aqui eu analiso o que é mapa(PAREDES e COMIDAS) e o que é Pacman/fantasmas;
+    ImprimeJogo(jogo);       
+    PrintaInicioPacman(jogo.pacman);
     return jogo;
 }
 
-//Função que tualiza as coordenadas do Pacman no mapa       REPENSAR NESSAS FUNCOES
-tPacman EncontraCoordenadaDoPacman(tJogo jogo, tPacman pacman) {
-    pacman.coordenada = EncontraCoordenada(jogo, PACMAN);
-    return pacman;
+
+
+//GRUPO DE FUNCOES VOLTADAS PARA AS JOGADAS
+tPacman AtualizaCoordenadaPacman(int x, int y, tPacman pacman) {
+    pacman.coordenada.x = x;
+    pacman.coordenada.y = y;
+return pacman;
 }
+
+
+
 
 //Função que deve realizar as jogadas até que todas as comidas sejam consumidas ou o jogador perca
 void RealizaJogadas(tJogo jogo) {
-    int jogadas = 0, pontuacao = 0, comidas;
+    int jogadas = 0, pontuacao = 0, comidas = 1;
     char jogada;
-    tPacman pacman;
+
+    tCoordenada xyPacman;
+    int xPacman, yPacman;
+
+    scanf("%*c");       //REVER ISSO E O SCANF DE BAIXO!
+
     while(comidas && jogadas < jogo.limiteDeJogadas) {
-        scanf("%c", &jogada);
+        scanf("%c\n", &jogada);
+        //MOVER FANTASMAS ANTES DO PACMAN
+        xyPacman = GetXYPacman(jogo.pacman);
+        xPacman = GetX(xyPacman);
+        yPacman = GetY(xyPacman);
+
         switch (jogada) {
             case 'w':
-            //COMPLETAR A PARTIR DAQUI!!!!!!!
+                if(jogo.mapa[xPacman+1][yPacman] != PAREDE) {
+                    if(jogo.mapa[xPacman+1][yPacman] == COMIDA) {
+                        pontuacao++;
+                        jogo.mapa[xPacman+1][yPacman] = VAZIO;
+                    }
+                    jogo.pacman = AtualizaCoordenadaPacman(xPacman+1, yPacman, jogo.pacman);
+                }
+                else {
+                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    break;
+                }
+            
+            case 'a':
+                if(jogo.mapa[xPacman][yPacman-1] != PAREDE) {
+                    if(jogo.mapa[xPacman][yPacman-1] == COMIDA) {
+                        pontuacao++;
+                        jogo.mapa[xPacman][yPacman-1] = VAZIO;
+                    }
+                    jogo.pacman = AtualizaCoordenadaPacman(xPacman, yPacman-1, jogo.pacman);
+                }
+                else {
+                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    break;
+                }
+
+            case 's':
+                if(jogo.mapa[xPacman-1][yPacman] != PAREDE) {
+                    if(jogo.mapa[xPacman-1][yPacman] == COMIDA) {
+                        pontuacao++;
+                        jogo.mapa[xPacman-1][yPacman] = VAZIO;
+                    }
+                    jogo.pacman = AtualizaCoordenadaPacman(xPacman-1, yPacman, jogo.pacman);
+                }
+                else {
+                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    break;
+                }
+
+            case 'd':
+                if(jogo.mapa[xPacman][yPacman+1] != PAREDE) {
+                    if(jogo.mapa[xPacman][yPacman+1] == COMIDA) {
+                        pontuacao++;
+                        jogo.mapa[xPacman][yPacman+1] = VAZIO;
+                    }
+                    jogo.pacman = AtualizaCoordenadaPacman(xPacman, yPacman+1, jogo.pacman);
+                }
+                else {
+                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    break;
+                }
         }
+        ImprimeJogo(jogo);
     }
 }
 
