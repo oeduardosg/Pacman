@@ -27,6 +27,21 @@ typedef struct {
     int pontuacao;
 } tPacman;
 
+//Tipo Fantasma
+typedef struct {
+    int existe;
+    tCoordenada coordenada;
+    char tipo;
+} tFantasma;
+
+//Tipo Fantasmas
+typedef struct {
+    tFantasma B;
+    tFantasma P;
+    tFantasma I;
+    tFantasma C;
+} tFantasmas;
+
 //Tipo Jogo
 typedef struct {
     int linhas;
@@ -35,6 +50,8 @@ typedef struct {
     tPacman pacman;
     char mapa[MAPA_MAX_L][MAPA_MAX_C];
 } tJogo;
+
+//!!! FIM DOS TIPOS !!!
 
 tCoordenada GetXYPacman(tPacman pacman) {
 return pacman.coordenada;
@@ -61,7 +78,6 @@ void PreencheMapa(int linha, int coluna, char mapaPreenchido[linha][coluna], tJo
     xPacman = GetX(xyPacman);
     yPacman = GetY(xyPacman);
     if(xPacman != -1 && yPacman != -1) mapaPreenchido[xPacman][yPacman] = PACMAN;
-    //COLOCAR OS FANTASMAS
 }
 
 //Função para imprimir o mapa
@@ -99,10 +115,14 @@ void PrintaInicioPacman(tPacman pacman) {
 
 tJogo LeJogoCompleto(int linha, int coluna, char mapaGeral[linha][coluna], tJogo jogo) {
     int i, j;
+
     tPacman pacman;
     pacman.coordenada = EncontraCoordenada(linha, coluna, mapaGeral, PACMAN);
     pacman.pontuacao = 0;
     jogo.pacman = pacman;
+
+
+
     for(i = 0; i < linha; i++) {
         for(j = 0; j < coluna; j++) {
             if(mapaGeral[i][j] != PAREDE && mapaGeral[i][j] != COMIDA) {
@@ -156,21 +176,34 @@ tPacman AtualizaCoordenadaPacman(int x, int y, tPacman pacman) {
 return pacman;
 }
 
-
+int AchaComidas(int linha, int coluna, char mapa[linha][coluna]) {
+    int i, j, comidas = 0;
+    for(i = 0; i < linha; i++) {
+        for(j = 0; j < coluna; j++) {
+            if(mapa[i][j] == COMIDA) comidas++;
+        }
+    }
+return comidas;
+}
 
 
 //Função que deve realizar as jogadas até que todas as comidas sejam consumidas ou o jogador perca
 void RealizaJogadas(tJogo jogo) {
-    int jogadas = 0, pontuacao = 0, comidas = 1;
-    char jogada;
+    int jogadas = 0, pontuacao = 0, comidas = 0;
+    char jogada, lixo;
+
+    int i, j;
+    for(i = 0; i < jogo.linhas; i++) {
+        for(j = 0; j < jogo.colunas; j++) {
+            if(jogo.mapa[i][j] == COMIDA) comidas++;
+        }
+    }
 
     tCoordenada xyPacman;
     int xPacman, yPacman;
 
-    scanf("%*[^\n]\n");       //REVER ISSO E O SCANF DE BAIXO!
-
-    while(comidas && jogadas < jogo.limiteDeJogadas) {
-        scanf("%c\n", &jogada);
+    while(comidas != pontuacao && jogadas <= jogo.limiteDeJogadas) {
+        scanf("%c%*c", &jogada);
         //MOVER FANTASMAS ANTES DO PACMAN
         xyPacman = GetXYPacman(jogo.pacman);
         xPacman = GetX(xyPacman);
@@ -178,17 +211,18 @@ void RealizaJogadas(tJogo jogo) {
 
         switch (jogada) {
             case 'w':
-                if(jogo.mapa[xPacman+1][yPacman] != PAREDE) {
-                    if(jogo.mapa[xPacman+1][yPacman] == COMIDA) {
+                if(jogo.mapa[xPacman-1][yPacman] != PAREDE) {
+                    if(jogo.mapa[xPacman-1][yPacman] == COMIDA) {
                         pontuacao++;
-                        jogo.mapa[xPacman+1][yPacman] = VAZIO;
+                        jogo.mapa[xPacman-1][yPacman] = VAZIO;
                     }
-                    jogo.pacman = AtualizaCoordenadaPacman(xPacman+1, yPacman, jogo.pacman);
+                    jogo.pacman = AtualizaCoordenadaPacman(xPacman-1, yPacman, jogo.pacman);
                 }
                 else {
                     jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
                     break;
                 }
+                break;
             
             case 'a':
                 if(jogo.mapa[xPacman][yPacman-1] != PAREDE) {
@@ -202,19 +236,21 @@ void RealizaJogadas(tJogo jogo) {
                     jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
                     break;
                 }
+                break;
 
             case 's':
-                if(jogo.mapa[xPacman-1][yPacman] != PAREDE) {
-                    if(jogo.mapa[xPacman-1][yPacman] == COMIDA) {
+                if(jogo.mapa[xPacman+1][yPacman] != PAREDE) {
+                    if(jogo.mapa[xPacman+1][yPacman] == COMIDA) {
                         pontuacao++;
-                        jogo.mapa[xPacman-1][yPacman] = VAZIO;
+                        jogo.mapa[xPacman+1][yPacman] = VAZIO;
                     }
-                    jogo.pacman = AtualizaCoordenadaPacman(xPacman-1, yPacman, jogo.pacman);
+                    jogo.pacman = AtualizaCoordenadaPacman(xPacman+1, yPacman, jogo.pacman);
                 }
                 else {
                     jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
                     break;
                 }
+                break;
 
             case 'd':
                 if(jogo.mapa[xPacman][yPacman+1] != PAREDE) {
@@ -228,9 +264,20 @@ void RealizaJogadas(tJogo jogo) {
                     jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
                     break;
                 }
+                break;
         }
-        printf("%d %d\n", jogo.pacman.coordenada.x, jogo.pacman.coordenada.y);
-        ImprimeJogo(jogo);
+        if(comidas == pontuacao) {
+            printf("Voce venceu!\nPontuacao final: %d\n", pontuacao);
+        }
+        else if (jogadas == jogo.limiteDeJogadas) {
+            printf("Game over!\nPontuacao final: %d\n", pontuacao);
+        }
+        else {
+            printf("Estado do jogo apos o movimento '%c':\n", jogada);
+            ImprimeJogo(jogo);
+            printf("Pontuacao: %d\n", pontuacao);
+        }
+        jogadas++;
     }
 }
 
