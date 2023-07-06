@@ -225,7 +225,9 @@ tJogo InicializaJogo(char * diretorioGeral) {
     fscanf(arqJogo, "%d", &jogo.linhas);
     fscanf(arqJogo, "%d", &jogo.colunas);
     fscanf(arqJogo, "%d", &jogo.limiteDeJogadas);
+
     char mapaGeral[jogo.linhas][jogo.colunas];
+
     for(i = 0; i < jogo.linhas; i++) {
         fscanf(arqJogo, "\n");
         for(j = 0; j < jogo.colunas; j++) {
@@ -257,17 +259,10 @@ int AchaComidas(int linha, int coluna, char mapa[linha][coluna]) {
 return comidas;
 }
 
-tFantasma AtualizaCoordenadaFantasma(tFantasma fantasma, int linha, int coluna, char mapaGeral[linha][coluna]) {
+tFantasma AtualizaCoordenadaFantasma(tFantasma fantasma, tJogo jogo) {
     int i, j;
     if(fantasma.dx != 0) {
-    /*  for(i = 0; i < linha; i++) {
-            for(j = 0; j < coluna; j++) {
-                printf("%c", mapaGeral[i][j]);     
-            }
-        printf("\n");
-        } */
-        char teste = mapaGeral[1][6];               //NÃO ESTÁ PASSANDO A MATRIZ CORRETAMENTE!
-        if(mapaGeral[fantasma.coordenada.x+fantasma.dx][fantasma.coordenada.y] == PAREDE) {
+        if(jogo.mapa[fantasma.coordenada.x+fantasma.dx][fantasma.coordenada.y] == PAREDE) {
             fantasma.dx *= -1;
             fantasma.coordenada.x += fantasma.dx;
         }
@@ -276,7 +271,7 @@ tFantasma AtualizaCoordenadaFantasma(tFantasma fantasma, int linha, int coluna, 
         }
     }
     else if(fantasma.dy != 0) {
-        if(mapaGeral[fantasma.coordenada.x][fantasma.coordenada.y+fantasma.dy] == PAREDE) {
+        if(jogo.mapa[fantasma.coordenada.x][fantasma.coordenada.y+fantasma.dy] == PAREDE) {
             fantasma.dy *= -1;
             fantasma.coordenada.y += fantasma.dy;
         }
@@ -287,9 +282,17 @@ tFantasma AtualizaCoordenadaFantasma(tFantasma fantasma, int linha, int coluna, 
 return fantasma;
 }
 
+int TemFantasmaAqui(tFantasma * fantasmas, int x, int y) {
+    int i;
+    for(i = 0; i < MAX_FANTASMAS; i++) {
+        if(fantasmas[i].coordenada.x == x && fantasmas[i].coordenada.y == y) return 1;
+    }
+return 0;
+}
+
 //Função que deve realizar as jogadas até que todas as comidas sejam consumidas ou o jogador perca
 void RealizaJogadas(tJogo jogo) {
-    int jogadas = 0, pontuacao = 0, comidas = 0;
+    int jogadas = 0, pontuacao = 0, comidas = 0, vida = 1;
     char jogada, lixo;
 
     int i, j;
@@ -307,13 +310,17 @@ void RealizaJogadas(tJogo jogo) {
         
         for(i = 0; i < MAX_FANTASMAS; i++) {
             if(ExisteFantasma(jogo.fantasmas[i])) {
-                jogo.fantasmas[i] = AtualizaCoordenadaFantasma(jogo.fantasmas[i], jogo.linhas, jogo.colunas, jogo.mapa);
+                jogo.fantasmas[i] = AtualizaCoordenadaFantasma(jogo.fantasmas[i], jogo);
             }
         }
 
         xyPacman = GetXYPacman(jogo.pacman);
         xPacman = GetX(xyPacman);
         yPacman = GetY(xyPacman);
+
+        //FALTA MEXER EM TODAS AS MOVIMENTAÇÕES E ADICIONAR QUANDO MORRE PRO FANTASMA! 
+        //A MOVIMENTAÇÃO "d" PRECISA SER MODIFICADA, NÃO ESTÁ CORRETA
+        //MODIFICAR OS PRINTF NO FINAL E TAMBÉM REVER A CONTAGEM DE JOGADAS
 
         switch (jogada) {
             case 'w':
@@ -323,10 +330,6 @@ void RealizaJogadas(tJogo jogo) {
                         jogo.mapa[xPacman-1][yPacman] = VAZIO;
                     }
                     jogo.pacman = AtualizaCoordenadaPacman(xPacman-1, yPacman, jogo.pacman);
-                }
-                else {
-                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
-                    break;
                 }
                 break;
             
@@ -338,10 +341,6 @@ void RealizaJogadas(tJogo jogo) {
                     }
                     jogo.pacman = AtualizaCoordenadaPacman(xPacman, yPacman-1, jogo.pacman);
                 }
-                else {
-                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
-                    break;
-                }
                 break;
 
             case 's':
@@ -352,30 +351,28 @@ void RealizaJogadas(tJogo jogo) {
                     }
                     jogo.pacman = AtualizaCoordenadaPacman(xPacman+1, yPacman, jogo.pacman);
                 }
-                else {
-                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
-                    break;
-                }
                 break;
 
             case 'd':
                 if(jogo.mapa[xPacman][yPacman+1] != PAREDE) {
-                    if(jogo.mapa[xPacman][yPacman+1] == COMIDA) {
-                        pontuacao++;
-                        jogo.mapa[xPacman][yPacman+1] = VAZIO;
+                    if(TemFantasmaAqui(jogo.fantasmas, xPacman, xPacman+1)) {
+                        vida = 0;
+                        if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
                     }
-                    jogo.pacman = AtualizaCoordenadaPacman(xPacman, yPacman+1, jogo.pacman);
-                }
-                else {
-                    jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
-                    break;
+                    else {
+                        if(jogo.mapa[xPacman][yPacman+1] == COMIDA) {
+                            pontuacao++;
+                            jogo.mapa[xPacman][yPacman+1] = VAZIO;
+                        }
+                        jogo.pacman = AtualizaCoordenadaPacman(xPacman, yPacman+1, jogo.pacman);
+                    }
                 }
                 break;
         }
         if(comidas == pontuacao) {
             printf("Voce venceu!\nPontuacao final: %d\n", pontuacao);
         }
-        else if (jogadas == jogo.limiteDeJogadas) {
+        else if (jogadas == jogo.limiteDeJogadas || !vida) {
             printf("Game over!\nPontuacao final: %d\n", pontuacao);
         }
         else {
@@ -389,6 +386,7 @@ void RealizaJogadas(tJogo jogo) {
 
 int main(int argc, char * argv[]) {
     tJogo jogo;
+    int i, j;
     char diretorioGeral[MAX_DIR];
     if(argc <= 1) {
         printf("ERRO: O diretorio de arquivos de configuracao nao foi informado\n");
