@@ -44,8 +44,6 @@ typedef struct {
     int dy;
 } tFantasma;
 
-//Tipo Movimento
-
 //Tipo Jogo
 typedef struct {
     int linhas;
@@ -56,6 +54,7 @@ typedef struct {
     char mapa[MAPA_MAX_L][MAPA_MAX_C];
 } tJogo;
 
+//Tipo Movimento
 typedef struct {
     char direcao;
     int comeu;
@@ -139,8 +138,8 @@ tCoordenada EncontraCoordenada(int linha, int coluna, char mapa[linha][coluna], 
 }
 
 //Função pra printar a posição inicial do Pacman
-void PrintaInicioPacman(tPacman pacman) {
-    printf("Pac-Man comecara o jogo na linha %d e coluna %d\n", pacman.coordenada.x+1, pacman.coordenada.y+1);
+void PrintaInicioPacmanNoDiretorio(tPacman pacman, FILE * arq) {
+    fprintf(arq, "Pac-Man comecara o jogo na linha %d e coluna %d", pacman.coordenada.x+1, pacman.coordenada.y+1);
 }
 
 //Varre o mapa pra achar os fantasmas existentes
@@ -237,14 +236,14 @@ tJogo InicializaJogo(char * diretorioGeral) {
     tJogo jogo;
     tCoordenada coordenadaPacman;
     char diretorioDoJogo[MAX_DIR];
-    FILE * arqJogo;
+    FILE * arqJogo = NULL;
     int i, j;
 
     sprintf(diretorioDoJogo, "%s/mapa.txt", diretorioGeral);
     arqJogo = fopen(diretorioDoJogo, "r");
 
     if(!arqJogo) {
-        printf("ERRO: Nao foi possivel localizar o arquivo mapa.txt em %s", diretorioDoJogo);                 //ESSA MENSAGEM NÃO ESTA CORRETA!
+        printf("ERRO: Nao foi possivel localizar o arquivo mapa.txt em %s", diretorioGeral);                 
         exit(1);
     }
     fscanf(arqJogo, "%d", &jogo.linhas);
@@ -260,8 +259,25 @@ tJogo InicializaJogo(char * diretorioGeral) {
         }
     }
     jogo = LeJogoCompleto(jogo.linhas, jogo.colunas, mapaGeral, jogo);        //Aqui eu analiso o que é mapa(PAREDES e COMIDAS) e o que é Pacman/fantasmas;
-    ImprimeJogo(jogo);       
-    PrintaInicioPacman(jogo.pacman);
+
+    FILE * arqInicializacao = NULL;
+    char diretorioDaInicializacao[MAX_DIR];
+    sprintf(diretorioDaInicializacao, "%s/saida/inicializacao.txt", diretorioGeral);
+    arqInicializacao = fopen(diretorioDaInicializacao, "w");
+
+    if(!arqInicializacao) {
+        printf("ERRO: Nao foi possivel criar o arquivo inicializacao.txt em %s", diretorioDaInicializacao);        
+        exit(1);
+    }
+    for(i = 0; i < jogo.linhas; i++) {
+        for(j = 0; j < jogo.colunas; j++) {
+            fprintf(arqInicializacao, "%c", mapaGeral[i][j]);
+        }
+        fprintf(arqInicializacao, "\n");
+    }
+    PrintaInicioPacmanNoDiretorio(jogo.pacman, arqInicializacao);
+    fclose(arqInicializacao);
+
     return jogo;
 }
 
@@ -343,11 +359,9 @@ return movimento;
 }
 
 //Função que deve realizar as jogadas até que todas as comidas sejam consumidas ou o jogador perca
-void RealizaJogadas(tJogo jogo) {
-    int jogadas = 0, pontuacao = 0, comidas = 0, vida = 1, i;
+void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
+    int jogadas = 1, pontuacao = 0, comidas = 0, vida = 1, i;
     char jogada, lixo;
-
-    tMovimento movimentos[jogo.limiteDeJogadas];
 
     tCoordenada xyPacman;
     int xPacman, yPacman;
@@ -366,9 +380,6 @@ void RealizaJogadas(tJogo jogo) {
         xyPacman = GetXYPacman(jogo.pacman);
         xPacman = GetX(xyPacman);
         yPacman = GetY(xyPacman);
-
-        //FALTA MEXER EM TODAS AS MOVIMENTAÇÕES E ADICIONAR QUANDO MORRE PRO FANTASMA! 
-        //MODIFICAR OS PRINTF NO FINAL E TAMBÉM REVER A CONTAGEM DE JOGADAS
 
         switch (jogada) {
             case CIMA:
@@ -493,24 +504,50 @@ void RealizaJogadas(tJogo jogo) {
         printf("Pontuacao: %d\n\n", pontuacao);
         if(comidas == pontuacao) {
             printf("Voce venceu!\nPontuacao final: %d\n", pontuacao);
+            break;
         }
-        else if (jogadas == jogo.limiteDeJogadas - 1 || !vida) {
+        else if(jogadas == jogo.limiteDeJogadas || !vida) {
             printf("Game over!\nPontuacao final: %d\n", pontuacao);
+            break;
         }
         jogadas++;
     }
+}
+
+void GeraResumo(tMovimento * movimentos, char * diretorioGeral) {
+    FILE * arqResumo = NULL;
+    char diretorioDoResumo[MAX_DIR];
+    sprintf(diretorioDoResumo, "%s/saida/resumo.txt", diretorioGeral);
+    arqResumo = fopen(diretorioDoResumo, "w");
+
+    if(!arqResumo) {
+        printf("ERRO: Nao foi possivel criar o arquivo resumo.txt em %s", diretorioDoResumo);        
+        exit(1);
+    }
+
+    int i = 0;
+    do {
+        if(movimentos[i].morreu) fprintf(arqResumo, "Movimento %d (%c) fim de jogo por encostar em um fantasma\n", i, movimentos[i].direcao);
+        if(movimentos[i].bateu) fprintf(arqResumo, "Movimento %d (%c) colidiu com a parede\n", i, movimentos[i].direcao);
+        if(movimentos[i].comeu) fprintf(arqResumo, "Movimento %d (%c) pegou comida\n", i, movimentos[i].direcao);
+    } while(movimentos[i].morreu);
+
+    fclose(arqResumo);
 }
 
 int main(int argc, char * argv[]) {
     tJogo jogo;
     int i, j;
     char diretorioGeral[MAX_DIR];
+
     if(argc <= 1) {
         printf("ERRO: O diretorio de arquivos de configuracao nao foi informado\n");
         return 1;
     }
     sprintf(diretorioGeral, "%s", argv[1]);
+
     jogo = InicializaJogo(diretorioGeral);
-    RealizaJogadas(jogo);
+    tMovimento movimentos[jogo.limiteDeJogadas];
+    RealizaJogadas(jogo, movimentos);
 return 0;
 }
