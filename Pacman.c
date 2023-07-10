@@ -480,7 +480,7 @@ void RealizaJogadas(tJogo jogo) {
                     jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                     vida = GetLifePacman(jogo.pacman);
                     if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
-                    movimentos[jogadas] = PreencheMovimento(ESQUERDA, 0, 0, jogo.pacman);
+                    movimentos[jogadas] = PreencheMovimento(DIREITA, 0, 0, jogo.pacman);
                 }
                 else {
                     movimentos[jogadas] = PreencheMovimento(DIREITA, 0, 1, jogo.pacman);
