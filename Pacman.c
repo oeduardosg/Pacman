@@ -358,8 +358,8 @@ tMovimento PreencheMovimento(char direcao, int comeu, int bateu, tPacman pacman)
 return movimento;
 }
 
-tMovimento MovimentoFinal(tMovimento movimento, int motivo) {
-    movimento.vida = motivo;
+tMovimento MovimentoFinal(tMovimento movimento) {
+    movimento.vida = -1;
 return movimento;
 }
 
@@ -385,6 +385,8 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
         xyPacman = GetXYPacman(jogo.pacman);
         xPacman = GetX(xyPacman);
         yPacman = GetY(xyPacman);
+
+        movimentos[0] = PreencheMovimento('T', 0, 0, jogo.pacman);
 
         switch (jogada) {
             case CIMA:
@@ -509,12 +511,12 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
         printf("Pontuacao: %d\n\n", pontuacao);
         if(comidas == pontuacao) {
             printf("Voce venceu!\nPontuacao final: %d\n", pontuacao);
-            movimentos[jogada] = MovimentoFinal(movimentos[jogada], -2);
+            movimentos[jogadas] = MovimentoFinal(movimentos[jogadas]);
             break;
         }
         else if(jogadas == jogo.limiteDeJogadas || !vida) {
             printf("Game over!\nPontuacao final: %d\n", pontuacao);
-            if(jogadas == jogo.limiteDeJogadas) movimentos[jogada] = MovimentoFinal(movimentos[jogada], -1);
+            if(jogadas == jogo.limiteDeJogadas) movimentos[jogadas] = MovimentoFinal(movimentos[jogadas]);
             break;
         }
         jogadas++;
@@ -538,10 +540,15 @@ void GeraResumo(tMovimento * movimentos, char * diretorioGeral) {
             fprintf(arqResumo, "Movimento %d (%c) fim de jogo por encostar em um fantasma\n", i, movimentos[i].direcao);
             flagVida = 0;
         }
-        if(movimentos[i].bateu) fprintf(arqResumo, "Movimento %d (%c) colidiu na parede\n", i, movimentos[i].direcao);
-        if(movimentos[i].comeu) fprintf(arqResumo, "Movimento %d (%c) pegou comida\n", i, movimentos[i].direcao);
-        if(movimentos[i].vida == -1) break;
-        if(movimentos[i].vida == -2) break;
+        if(movimentos[i].bateu) {
+            fprintf(arqResumo, "Movimento %d (%c) colidiu na parede\n", i, movimentos[i].direcao);
+        }
+        if(movimentos[i].comeu) {
+            fprintf(arqResumo, "Movimento %d (%c) pegou comida\n", i, movimentos[i].direcao);
+        }
+        if(movimentos[i].vida == -1) {
+            break;
+        }
         i++;
     }
 

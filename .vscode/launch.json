@@ -6,7 +6,7 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/Pacman",
-        "args": ["Gabarito/normais/01"],
+        "args": ["Gabarito/simples/01"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
         "environment": [],
