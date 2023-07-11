@@ -59,7 +59,7 @@ typedef struct {
     char direcao;
     int comeu;
     int bateu;
-    int morreu;
+    int vida;
     tCoordenada coordenada;
 } tMovimento;
 
@@ -353,7 +353,7 @@ tMovimento PreencheMovimento(char direcao, int comeu, int bateu, tPacman pacman)
     movimento.direcao = direcao;
     movimento.comeu = comeu;
     movimento.bateu = bateu;
-    movimento.morreu = pacman.vida;
+    movimento.vida = pacman.vida;
     movimento.coordenada = pacman.coordenada;
 return movimento;
 }
@@ -525,12 +525,16 @@ void GeraResumo(tMovimento * movimentos, char * diretorioGeral) {
         exit(1);
     }
 
-    int i = 0;
-    do {
-        if(movimentos[i].morreu) fprintf(arqResumo, "Movimento %d (%c) fim de jogo por encostar em um fantasma\n", i, movimentos[i].direcao);
+    int i = 1, flagVida = 1;
+    while(flagVida) {
+        if(!movimentos[i].vida) {
+            fprintf(arqResumo, "Movimento %d (%c) fim de jogo por encostar em um fantasma\n", i, movimentos[i].direcao);
+            flagVida = 0;
+        }
         if(movimentos[i].bateu) fprintf(arqResumo, "Movimento %d (%c) colidiu com a parede\n", i, movimentos[i].direcao);
         if(movimentos[i].comeu) fprintf(arqResumo, "Movimento %d (%c) pegou comida\n", i, movimentos[i].direcao);
-    } while(movimentos[i].morreu);
+        i++;
+    }
 
     fclose(arqResumo);
 }
@@ -549,5 +553,6 @@ int main(int argc, char * argv[]) {
     jogo = InicializaJogo(diretorioGeral);
     tMovimento movimentos[jogo.limiteDeJogadas];
     RealizaJogadas(jogo, movimentos);
+    GeraResumo(movimentos, diretorioGeral);
 return 0;
 }
