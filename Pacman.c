@@ -661,7 +661,7 @@ void GeraTrilha(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
     arqTrilha = fopen(diretorioDaTrilha, "w");
 
     if(!arqTrilha) {
-        printf("ERRO: Nao foi possivel criar o arquivo ranking.txt em %s", diretorioDaTrilha);        
+        printf("ERRO: Nao foi possivel criar o arquivo trilha.txt em %s", diretorioDaTrilha);        
         exit(1);
     }
 
@@ -692,6 +692,40 @@ void GeraTrilha(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
     fclose(arqTrilha);
 }
 
+void GeraEstatisticas(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
+    FILE * arqEstatistica = NULL;
+    char diretorioDaEstatistica[MAX_DIR];
+    sprintf(diretorioDaEstatistica, "%s/saida/estatisticas.txt", diretorioGeral);
+    arqEstatistica = fopen(diretorioDaEstatistica, "w");
+
+    if(!arqEstatistica) {
+        printf("ERRO: Nao foi possivel criar o arquivo estatistica.txt em %s", diretorioDaEstatistica);        
+        exit(1);
+    }
+
+    int i, nMovimentos = 0, nMovimentosSemPont = 0, nColisoes = 0, nCima = 0, nEsquerda = 0, nDireita = 0, nBaixo = 0;
+    for(i = 1; i <= jogo.limiteDeJogadas; i++) {
+        if(movimentos[i].direcao == CIMA) nCima++;
+        if(movimentos[i].direcao == ESQUERDA) nEsquerda++;
+        if(movimentos[i].direcao == DIREITA) nDireita++;
+        if(movimentos[i].direcao == BAIXO) nBaixo++;
+        if(!movimentos[i].comeu) nMovimentosSemPont++;
+        if(movimentos[i].bateu) nColisoes++;
+        nMovimentos++;
+        if(!movimentos[i].vida || movimentos[i].vida == -1) break; 
+    }
+
+    fprintf(arqEstatistica, "Numero de movimentos: %d\n", nMovimentos);
+    fprintf(arqEstatistica, "Numero de movimentos sem pontuar: %d\n", nMovimentosSemPont);
+    fprintf(arqEstatistica, "Numero de colisoes com parede: %d\n", nColisoes);
+    fprintf(arqEstatistica, "Numero de movimentos para baixo: %d\n", nBaixo);
+    fprintf(arqEstatistica, "Numero de movimentos para cima: %d\n", nCima);
+    fprintf(arqEstatistica, "Numero de movimentos para esquerda: %d\n", nEsquerda);
+    fprintf(arqEstatistica, "Numero de movimentos para direita: %d\n", nDireita);
+
+    fclose(arqEstatistica);
+}
+
 int main(int argc, char * argv[]) {
     tJogo jogo;
     int i, j;
@@ -709,5 +743,6 @@ int main(int argc, char * argv[]) {
     GeraResumo(movimentos, diretorioGeral);
     GeraRanking(movimentos, diretorioGeral);
     GeraTrilha(movimentos, diretorioGeral, jogo);
+    GeraEstatisticas(movimentos, diretorioGeral, jogo);
 return 0;
 }
