@@ -63,6 +63,13 @@ typedef struct {
     tCoordenada coordenada;
 } tMovimento;
 
+typedef struct {
+    char letra;
+    int quantidade;
+    int comidas;
+    int colisoes;
+} tRanking;
+
 
 //!!! FIM DOS TIPOS !!!
 
@@ -555,6 +562,94 @@ void GeraResumo(tMovimento * movimentos, char * diretorioGeral) {
     fclose(arqResumo);
 }
 
+tRanking InicializaDirecao(tRanking direcao, char direcaoLetra) {
+    int i;
+    direcao.letra = direcaoLetra;
+    direcao.quantidade = 0;
+    direcao.comidas = 0;
+    direcao.colisoes = 0;
+return direcao;
+}
+
+tRanking AtualizaRanking(tRanking direcao, tMovimento movimento) {
+    direcao.quantidade++;
+    if(movimento.comeu) direcao.comidas++;
+    if(movimento.bateu) direcao.colisoes++;
+return direcao;
+}
+
+void OrganizaRanking(tRanking * direcao) {
+    int i, j;
+    tRanking aux;
+    for(i = 0; i < 3; i++) {
+        for(j = i + 1; j < 4; j++) {
+            if(direcao[i].comidas < direcao[j].comidas) {
+                aux = direcao[j];
+                direcao[j] = direcao[i];
+                direcao[i] = aux;
+            }
+            else if(direcao[i].colisoes > direcao[j].colisoes && direcao[i].comidas == direcao[j].comidas) {
+                aux = direcao[j];
+                direcao[j] = direcao[i];
+                direcao[i] = aux;
+            }
+            else if(direcao[i].quantidade < direcao[j].quantidade && direcao[i].colisoes == direcao[j].colisoes && direcao[i].comidas == direcao[j].comidas) {
+                aux = direcao[j];
+                direcao[j] = direcao[i];
+                direcao[i] = aux;
+            }
+        }
+    }
+}
+
+void PrintaNoRanking(tRanking * direcao, FILE * arqRanking) {
+    int i;
+    for(i = 0; i < 4; i++) {
+        fprintf(arqRanking, "%c,%d,%d,%d\n", direcao[i].letra, direcao[i].comidas, direcao[i].colisoes, direcao[i].quantidade);
+    }
+}
+
+void GeraRanking(tMovimento * movimentos, char * diretorioGeral) {
+    FILE * arqRanking = NULL;
+    char diretorioDoRanking[MAX_DIR];
+    sprintf(diretorioDoRanking, "%s/saida/ranking.txt", diretorioGeral);
+    arqRanking = fopen(diretorioDoRanking, "w");
+
+    if(!arqRanking) {
+        printf("ERRO: Nao foi possivel criar o arquivo ranking.txt em %s", diretorioDoRanking);        
+        exit(1);
+    }
+
+    int i = 1, j;
+    tRanking direcao[4];
+    direcao[0] = InicializaDirecao(direcao[0], CIMA);
+    direcao[1] = InicializaDirecao(direcao[1], ESQUERDA);
+    direcao[2] = InicializaDirecao(direcao[2], BAIXO);
+    direcao[3] = InicializaDirecao(direcao[3], DIREITA);
+    //0 == w
+    //1 == a
+    //2 == s
+    //3 == d
+    while(1) {
+        if(movimentos[i].direcao == CIMA) {
+            direcao[0] = AtualizaRanking(direcao[0], movimentos[i]);
+        }
+        else if(movimentos[i].direcao == ESQUERDA) {
+            direcao[1] = AtualizaRanking(direcao[1], movimentos[i]);
+        }
+        else if(movimentos[i].direcao == BAIXO) {
+            direcao[2] = AtualizaRanking(direcao[2], movimentos[i]);
+        }
+        else if(movimentos[i].direcao == DIREITA) {
+            direcao[3] = AtualizaRanking(direcao[3], movimentos[i]);
+        }
+        if(movimentos[i].vida == 0 || movimentos[i].vida == -1) break;
+    }
+    OrganizaRanking(direcao);
+    PrintaNoRanking(direcao, arqRanking);
+    fclose(arqRanking);
+}
+
 int main(int argc, char * argv[]) {
     tJogo jogo;
     int i, j;
@@ -567,8 +662,9 @@ int main(int argc, char * argv[]) {
     sprintf(diretorioGeral, "%s", argv[1]);
 
     jogo = InicializaJogo(diretorioGeral);
-    tMovimento movimentos[jogo.limiteDeJogadas];
+    tMovimento movimentos[jogo.limiteDeJogadas + 1];
     RealizaJogadas(jogo, movimentos);
     GeraResumo(movimentos, diretorioGeral);
+    //GeraRanking(movimentos, diretorioGeral);
 return 0;
 }
