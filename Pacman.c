@@ -379,6 +379,7 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
     int xPacman, yPacman;
 
     comidas = AchaComidas(jogo.linhas, jogo.colunas, jogo);
+    movimentos[0] = PreencheMovimento('T', 0, 0, jogo.pacman);
 
     while(comidas != pontuacao && jogadas <= jogo.limiteDeJogadas) {
         scanf("%c%*c", &jogada);
@@ -392,8 +393,6 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
         xyPacman = GetXYPacman(jogo.pacman);
         xPacman = GetX(xyPacman);
         yPacman = GetY(xyPacman);
-
-        movimentos[0] = PreencheMovimento('T', 0, 0, jogo.pacman);
 
         switch (jogada) {
             case CIMA:
@@ -644,10 +643,53 @@ void GeraRanking(tMovimento * movimentos, char * diretorioGeral) {
             direcao[3] = AtualizaRanking(direcao[3], movimentos[i]);
         }
         if(movimentos[i].vida == 0 || movimentos[i].vida == -1) break;
+        i++;
     }
     OrganizaRanking(direcao);
     PrintaNoRanking(direcao, arqRanking);
     fclose(arqRanking);
+}
+
+void AlteraTrilha(int linha, int coluna, int trilha[linha][coluna], tCoordenada coordenada, int movimento) {
+    trilha[coordenada.x][coordenada.y] = movimento;
+}
+
+void GeraTrilha(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
+    FILE * arqTrilha = NULL;
+    char diretorioDaTrilha[MAX_DIR];
+    sprintf(diretorioDaTrilha, "%s/saida/trilha.txt", diretorioGeral);
+    arqTrilha = fopen(diretorioDaTrilha, "w");
+
+    if(!arqTrilha) {
+        printf("ERRO: Nao foi possivel criar o arquivo ranking.txt em %s", diretorioDaTrilha);        
+        exit(1);
+    }
+
+    int trilha[jogo.linhas][jogo.colunas], i, j;
+    for(i = 0; i < jogo.linhas; i++) {
+        for(j = 0; j < jogo.colunas; j++) {
+            trilha[i][j] = -1;
+        }
+    }
+
+    i = 0;
+    while(1) {
+        AlteraTrilha(jogo.linhas, jogo.colunas, trilha, movimentos[i].coordenada, i);
+        if(movimentos[i].vida == 0 || movimentos[i].vida == -1) break;
+        i++;
+    }
+    for(i = 0; i < jogo.linhas; i++) {
+        for(j = 0; j < jogo.colunas; j++) {
+            if(trilha[i][j] == -1) {
+                fprintf(arqTrilha, "# ");
+            }
+            else {
+                fprintf(arqTrilha, "%d ", trilha[i][j]);
+            }
+        }
+        fprintf(arqTrilha, "\n");
+    }
+    fclose(arqTrilha);
 }
 
 int main(int argc, char * argv[]) {
@@ -665,6 +707,7 @@ int main(int argc, char * argv[]) {
     tMovimento movimentos[jogo.limiteDeJogadas + 1];
     RealizaJogadas(jogo, movimentos);
     GeraResumo(movimentos, diretorioGeral);
-    //GeraRanking(movimentos, diretorioGeral);
+    GeraRanking(movimentos, diretorioGeral);
+    GeraTrilha(movimentos, diretorioGeral, jogo);
 return 0;
 }
