@@ -795,10 +795,14 @@ void GeraEstatisticas(tMovimento * movimentos, char * diretorioGeral, tJogo jogo
     fclose(arqEstatistica);
 }
 
+//Retorna o limite de jogadas
+int GetLimit(tJogo jogo) {
+return jogo.limiteDeJogadas;
+}
 //Principal
 int main(int argc, char * argv[]) {
     tJogo jogo;
-    int i, j;
+    int limite;
     char diretorioGeral[MAX_DIR];
 
     if(argc <= 1) {
@@ -808,7 +812,10 @@ int main(int argc, char * argv[]) {
     sprintf(diretorioGeral, "%s", argv[1]);
 
     jogo = InicializaJogo(diretorioGeral);
-    tMovimento movimentos[jogo.limiteDeJogadas + 1];
+
+    limite = GetLimit(jogo);
+    tMovimento movimentos[limite + 1];
+
     RealizaJogadas(jogo, movimentos);
     GeraResumo(movimentos, diretorioGeral);
     GeraRanking(movimentos, diretorioGeral);
