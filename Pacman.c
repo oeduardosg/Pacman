@@ -8,6 +8,7 @@
 #define PAREDE '#'
 #define COMIDA '*'
 #define PACMAN '>'
+#define TUNEL '@'
 #define FANTASMA_B 'B'
 #define FANTASMA_P 'P'
 #define FANTASMA_I 'I'
@@ -116,7 +117,7 @@ void PreencheMapa(int linha, int coluna, char mapaPreenchido[linha][coluna], tJo
     }
 }
 
-//Função para imprimir o mapa
+//Função para imprimir o jogo completo
 void ImprimeJogo(tJogo jogo) {
     int i, j;
     char mapaPreenchido[jogo.linhas][jogo.colunas];
@@ -144,7 +145,7 @@ tCoordenada EncontraCoordenada(int linha, int coluna, char mapa[linha][coluna], 
     }
 }
 
-//Função pra printar a posição inicial do Pacman
+//Função pra printar a posição inicial do Pacman no arquivo de inicialização
 void PrintaInicioPacmanNoDiretorio(tPacman pacman, FILE * arq) {
     fprintf(arq, "Pac-Man comecara o jogo na linha %d e coluna %d", pacman.coordenada.x+1, pacman.coordenada.y+1);
 }
@@ -190,7 +191,7 @@ void CacaFantasmas(int linha, int coluna, char mapaGeral[linha][coluna], tFantas
     }
 }
 
-//Inicializa todos os fantasmas pra não ter problema com segmentation fault
+//Inicializa todos os fantasmas pra não ter problema com segmentation fault e outros
 void InicializaFantasmas(tFantasma * fantasma) {
     int i;
     for(i = 0; i < MAX_FANTASMAS; i++) {
@@ -202,6 +203,7 @@ void InicializaFantasmas(tFantasma * fantasma) {
     }
 }
 
+//Inicializa o pacman pra não ter problema com segmentation fault e outros
 tPacman InicializaPacman(int linha, int coluna, char mapaGeral[linha][coluna]) {
     tPacman pacman;
     pacman.coordenada = EncontraCoordenada(linha, coluna, mapaGeral, PACMAN);
@@ -210,7 +212,7 @@ tPacman InicializaPacman(int linha, int coluna, char mapaGeral[linha][coluna]) {
 return pacman;
 }
 
-//Adiciona as informações que faltam no jogo (fantasmas e pacman)
+//Formaliza o jogo com o mapa contendo apenas paredes, comida, vazio e tunel, separando os fantasmas e pacman;
 tJogo LeJogoCompleto(int linha, int coluna, char mapaGeral[linha][coluna], tJogo jogo) {
     int i, j;
 
@@ -227,7 +229,7 @@ tJogo LeJogoCompleto(int linha, int coluna, char mapaGeral[linha][coluna], tJogo
 
     for(i = 0; i < linha; i++) {
         for(j = 0; j < coluna; j++) {
-            if(mapaGeral[i][j] != PAREDE && mapaGeral[i][j] != COMIDA) {
+            if(mapaGeral[i][j] != PAREDE && mapaGeral[i][j] != COMIDA && mapaGeral[i][j] != TUNEL) {
                 jogo.mapa[i][j] = VAZIO;
             }
             else {
@@ -291,12 +293,15 @@ tJogo InicializaJogo(char * diretorioGeral) {
 
 
 //GRUPO DE FUNCOES VOLTADAS PARA AS JOGADAS
+
+//Muda as coordenadas após cada jogada
 tPacman AtualizaCoordenadaPacman(int x, int y, tPacman pacman) {
     pacman.coordenada.x = x;
     pacman.coordenada.y = y;
 return pacman;
 }
 
+//Encontra a quantidade de comidas do mapa
 int AchaComidas(int linha, int coluna, tJogo jogo) {
     int i, j, comidas = 0;
     for(i = 0; i < linha; i++) {
@@ -333,7 +338,7 @@ tFantasma AtualizaCoordenadaFantasma(tFantasma fantasma, tJogo jogo) {
 return fantasma;
 }
 
-//Verifica a existência de um fantasma na coordenada
+//Verifica a existência de um fantasma na coordenada dada
 int TemFantasmaAqui(tFantasma * fantasmas, int x, int y, char jogada) {
     int i;
     for(i = 0; i < MAX_FANTASMAS; i++) {
@@ -346,15 +351,18 @@ int TemFantasmaAqui(tFantasma * fantasmas, int x, int y, char jogada) {
 return 0;
 }
 
+//Diminui a vida do Pacman
 tPacman AtualizaVidaPacman(tPacman pacman) {
     pacman.vida--;
 return pacman;
 }
 
+//Retorna a vida do Pacman
 int GetLifePacman(tPacman pacman) {
 return pacman.vida;
 }
 
+//Preenche o tipo movimento com as informações relevantes da jogada
 tMovimento PreencheMovimento(char direcao, int comeu, int bateu, tPacman pacman) {
     tMovimento movimento;
     movimento.direcao = direcao;
@@ -365,9 +373,25 @@ tMovimento PreencheMovimento(char direcao, int comeu, int bateu, tPacman pacman)
 return movimento;
 }
 
+//Atualiza a vida do Pacman para -1 caso ele tenha vencido o jogo ou atingido o limite de jogadas;
 tMovimento MovimentoFinal(tMovimento movimento) {
     movimento.vida = -1;
 return movimento;
+}
+
+//Envia o Pacman para o outro túnel do mapa
+tPacman EnviaPraOutroTunel(tJogo jogo, tPacman pacman, int x, int y) {
+    int i, j;
+    for(i = 0; i < jogo.linhas; i++) {
+        for(j = 0; j < jogo.colunas; j++) {
+            if(jogo.mapa[i][j] == TUNEL && (i != x || j != y)) {
+                pacman.coordenada.x = i;
+                pacman.coordenada.y = j;
+                break;
+            }
+        }
+    }
+return pacman;
 }
 
 //Função que deve realizar as jogadas até que todas as comidas sejam consumidas ou o jogador perca
@@ -379,7 +403,7 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
     int xPacman, yPacman;
 
     comidas = AchaComidas(jogo.linhas, jogo.colunas, jogo);
-    movimentos[0] = PreencheMovimento('T', 0, 0, jogo.pacman);
+    movimentos[0] = PreencheMovimento('T', 0, 0, jogo.pacman);  //Inicializa a posição inicial para printar na trilha futuramente
 
     while(comidas != pontuacao && jogadas <= jogo.limiteDeJogadas) {
         scanf("%c%*c", &jogada);
@@ -403,6 +427,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                         if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
                         movimentos[jogadas] = PreencheMovimento(CIMA, 0, 0, jogo.pacman);
                     }
+                    else if(jogo.mapa[xPacman-1][yPacman] == TUNEL) {
+                        jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman-1, yPacman);
+                        movimentos[jogadas] = PreencheMovimento(CIMA, 0, 0, jogo.pacman);
+                    }
                     else {
                         jogo.pacman = AtualizaCoordenadaPacman(xPacman-1, yPacman, jogo.pacman);
                         movimentos[jogadas] = PreencheMovimento(CIMA, 0, 0, jogo.pacman);
@@ -417,6 +445,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                     jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                     vida = GetLifePacman(jogo.pacman);
                     if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    movimentos[jogadas] = PreencheMovimento(CIMA, 0, 1, jogo.pacman);
+                }
+                else if(jogo.mapa[xPacman][yPacman] == TUNEL) {
+                    jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman, yPacman);
                     movimentos[jogadas] = PreencheMovimento(CIMA, 0, 0, jogo.pacman);
                 }
                 else {
@@ -430,6 +462,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                         jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                         vida = GetLifePacman(jogo.pacman);
                         if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                        movimentos[jogadas] = PreencheMovimento(ESQUERDA, 0, 0, jogo.pacman);
+                    }
+                    else if(jogo.mapa[xPacman][yPacman-1] == TUNEL) {
+                        jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman, yPacman-1);
                         movimentos[jogadas] = PreencheMovimento(ESQUERDA, 0, 0, jogo.pacman);
                     }
                     else {
@@ -446,6 +482,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                     jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                     vida = GetLifePacman(jogo.pacman);
                     if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    movimentos[jogadas] = PreencheMovimento(ESQUERDA, 0, 1, jogo.pacman);
+                }
+                else if (jogo.mapa[xPacman][yPacman] == TUNEL) {
+                    jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman, yPacman);
                     movimentos[jogadas] = PreencheMovimento(ESQUERDA, 0, 0, jogo.pacman);
                 }
                 else {
@@ -459,6 +499,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                         jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                         vida = GetLifePacman(jogo.pacman);
                         if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                        movimentos[jogadas] = PreencheMovimento(BAIXO, 0, 0, jogo.pacman);
+                    }
+                    else if (jogo.mapa[xPacman+1][yPacman] == TUNEL) {
+                        jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman+1, yPacman);
                         movimentos[jogadas] = PreencheMovimento(BAIXO, 0, 0, jogo.pacman);
                     }
                     else {
@@ -475,6 +519,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                     jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                     vida = GetLifePacman(jogo.pacman);
                     if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    movimentos[jogadas] = PreencheMovimento(BAIXO, 0, 1, jogo.pacman);
+                }
+                else if (jogo.mapa[xPacman][yPacman] == TUNEL) {
+                    jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman, yPacman);
                     movimentos[jogadas] = PreencheMovimento(BAIXO, 0, 0, jogo.pacman);
                 }
                 else {
@@ -488,6 +536,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                         jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                         vida = GetLifePacman(jogo.pacman);
                         if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                        movimentos[jogadas] = PreencheMovimento(DIREITA, 0, 0, jogo.pacman);
+                    }
+                    else if (jogo.mapa[xPacman][yPacman+1] == TUNEL) {
+                        jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman, yPacman);
                         movimentos[jogadas] = PreencheMovimento(DIREITA, 0, 0, jogo.pacman);
                     }
                     else {
@@ -504,6 +556,10 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
                     jogo.pacman = AtualizaVidaPacman(jogo.pacman);
                     vida = GetLifePacman(jogo.pacman);
                     if(!vida) jogo.pacman = AtualizaCoordenadaPacman(-1, -1, jogo.pacman);
+                    movimentos[jogadas] = PreencheMovimento(DIREITA, 0, 0, jogo.pacman);
+                }
+                else if (jogo.mapa[xPacman][yPacman] == TUNEL) {
+                    jogo.pacman = EnviaPraOutroTunel(jogo, jogo.pacman, xPacman, yPacman);
                     movimentos[jogadas] = PreencheMovimento(DIREITA, 0, 0, jogo.pacman);
                 }
                 else {
@@ -526,9 +582,13 @@ void RealizaJogadas(tJogo jogo, tMovimento * movimentos) {
             break;
         }
         jogadas++;
+        if(jogadas == 369) {
+            lixo = 'c';
+        }
     }
 }
 
+//Gera o arquivo resumo.txt
 void GeraResumo(tMovimento * movimentos, char * diretorioGeral) {
     FILE * arqResumo = NULL;
     char diretorioDoResumo[MAX_DIR];
@@ -561,6 +621,7 @@ void GeraResumo(tMovimento * movimentos, char * diretorioGeral) {
     fclose(arqResumo);
 }
 
+//Inicializa uma direção do ranking
 tRanking InicializaDirecao(tRanking direcao, char direcaoLetra) {
     int i;
     direcao.letra = direcaoLetra;
@@ -570,6 +631,7 @@ tRanking InicializaDirecao(tRanking direcao, char direcaoLetra) {
 return direcao;
 }
 
+//Soma informações a cada direção do ranking
 tRanking AtualizaRanking(tRanking direcao, tMovimento movimento) {
     direcao.quantidade++;
     if(movimento.comeu) direcao.comidas++;
@@ -577,6 +639,7 @@ tRanking AtualizaRanking(tRanking direcao, tMovimento movimento) {
 return direcao;
 }
 
+//Ordena os vetores do ranking
 void OrganizaRanking(tRanking * direcao) {
     int i, j;
     tRanking aux;
@@ -601,6 +664,7 @@ void OrganizaRanking(tRanking * direcao) {
     }
 }
 
+//Escreve no arquivo desejado as informações das direções
 void PrintaNoRanking(tRanking * direcao, FILE * arqRanking) {
     int i;
     for(i = 0; i < 4; i++) {
@@ -608,6 +672,7 @@ void PrintaNoRanking(tRanking * direcao, FILE * arqRanking) {
     }
 }
 
+//Gera o arquivo ranking.txt
 void GeraRanking(tMovimento * movimentos, char * diretorioGeral) {
     FILE * arqRanking = NULL;
     char diretorioDoRanking[MAX_DIR];
@@ -650,10 +715,12 @@ void GeraRanking(tMovimento * movimentos, char * diretorioGeral) {
     fclose(arqRanking);
 }
 
+//Adiciona a jogada na trilha previamente composta por -1
 void AlteraTrilha(int linha, int coluna, int trilha[linha][coluna], tCoordenada coordenada, int movimento) {
     trilha[coordenada.x][coordenada.y] = movimento;
 }
 
+//Gera o arquivo trilha.txt
 void GeraTrilha(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
     FILE * arqTrilha = NULL;
     char diretorioDaTrilha[MAX_DIR];
@@ -681,17 +748,19 @@ void GeraTrilha(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
     for(i = 0; i < jogo.linhas; i++) {
         for(j = 0; j < jogo.colunas; j++) {
             if(trilha[i][j] == -1) {
-                fprintf(arqTrilha, "# ");
+                fprintf(arqTrilha, "#");
             }
             else {
-                fprintf(arqTrilha, "%d ", trilha[i][j]);
+                fprintf(arqTrilha, "%d", trilha[i][j]);
             }
+            if(j != jogo.colunas - 1) fprintf(arqTrilha, " ");
         }
         fprintf(arqTrilha, "\n");
     }
     fclose(arqTrilha);
 }
 
+//Gera o arquivo estatisticas.txt
 void GeraEstatisticas(tMovimento * movimentos, char * diretorioGeral, tJogo jogo) {
     FILE * arqEstatistica = NULL;
     char diretorioDaEstatistica[MAX_DIR];
@@ -726,6 +795,7 @@ void GeraEstatisticas(tMovimento * movimentos, char * diretorioGeral, tJogo jogo
     fclose(arqEstatistica);
 }
 
+//Principal
 int main(int argc, char * argv[]) {
     tJogo jogo;
     int i, j;
